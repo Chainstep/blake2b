@@ -11,7 +11,7 @@
 ///
 import 'dart:typed_data';
 
-import 'package:blake2b/blake2b.dart';
+import 'blake2b.dart';
 import 'package:hex/hex.dart';
 
 class Blake2bHash {
@@ -21,11 +21,8 @@ class Blake2bHash {
 
   // hash from hex string to bytes
   static Uint8List hashHexString(String hex) {
-    if (null == hex) {
-      return null;
-    }
     var bytes = HEX.decode(hex);
-    return hash(bytes, 0, bytes.length);
+    return hash(bytes as Uint8List, 0, bytes.length);
   }
 
   // hash from hex string to hex string

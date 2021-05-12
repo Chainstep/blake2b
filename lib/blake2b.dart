@@ -13,8 +13,8 @@ library blake2b;
 
 import 'dart:typed_data';
 
-import 'package:blake2b/byte_utils.dart';
-import 'package:blake2b/const.dart';
+import 'byte_utils.dart';
+import 'const.dart';
 import 'package:fixnum/fixnum.dart';
 
 /// Blake2b
@@ -28,7 +28,7 @@ class Blake2b {
     this._buffer = Uint8List(Const.blockLengthBytes);
     this._keyLength = 0;
     this._digestSize = digestSize ~/ 8;
-    init();
+    init(this);
   }
 
   blake2bWithKey(final Uint8List key) {
@@ -42,7 +42,7 @@ class Blake2b {
       this._bufferPos = Const.blockLengthBytes; // zero padding
     }
     _digestSize = 64;
-    init();
+    init(this);
   }
 
   blake2b(final Uint8List key, final int digestSize, final Uint8List salt, final Uint8List personalization) {
@@ -68,17 +68,19 @@ class Blake2b {
       this._bufferPos = Const.blockLengthBytes; // zero padding
     }
 
-    init();
+    init(this);
   }
+
+  bool _initialized = false;
 
   // General parameters
   int _digestSize = 64; // 1- 64 bytes
   int _keyLength = 0; // 0 - 64 bytes for keyed hashing for MAC
-  Uint8List _salt; // new byte[16];
-  Uint8List _personalization; // new byte[16];
+  late Uint8List _salt; // new byte[16];
+  late Uint8List _personalization; // new byte[16];
 
   // The key
-  Uint8List _key;
+  late Uint8List _key;
 
   // whenever this buffer overflows, it will be processed
   // in the compress() function.
@@ -91,18 +93,18 @@ class Blake2b {
   List<Int64> _internalState = List<Int64>.filled(
       16, Int64.fromInts(0, 0)); // In the Blake2b paper it is called: v
 
-  List<Int64> _chainValue; // state vector, in the Blake2b paper it is called: h
+  late List<Int64> _chainValue; // state vector, in the Blake2b paper it is called: h
 
   Int64 _t0 = Int64.fromInts(0, 0); // holds last significant bits, counter (counts bytes)
   Int64 _t1 = Int64.fromInts(0, 0); // counter: Length up to 2^128 are supported
   Int64 _f0 = Int64.fromInts(0, 0); // finalization flag, for last block: ~0L
 
-  void init() {
-    if (null == _chainValue) {
+  static void init(Blake2b i) {
+    if (!i._initialized) {
       final List<Int64> newChainValue = [];
 
       // 0
-      newChainValue.add(Const.blake2bIv[0] ^ (_digestSize | (_keyLength << 8) | 0x1010000));
+      newChainValue.add(Const.blake2bIv[0] ^ (i._digestSize | (i._keyLength << 8) | 0x1010000));
       // 0x1010000 = ((fanout << 16) | (depth << 24) | (leafLength <<
       // 32));
       // with fanout = 1; depth = 0; leafLength = 0;
@@ -121,21 +123,21 @@ class Blake2b {
       newChainValue.add(Const.blake2bIv[4]);
       newChainValue.add(Const.blake2bIv[5]);
 
-      if (null != _salt) {
-        newChainValue[4] ^= (ByteUtils.bytes2long(_salt, 0));
-        newChainValue[5] ^= (ByteUtils.bytes2long(_salt, 8));
+      if (null != i._salt) {
+        newChainValue[4] ^= (ByteUtils.bytes2long(i._salt, 0));
+        newChainValue[5] ^= (ByteUtils.bytes2long(i._salt, 8));
       }
 
       // 6, 7
       newChainValue.add(Const.blake2bIv[6]);
       newChainValue.add(Const.blake2bIv[7]);
 
-      if (null != _personalization) {
-        newChainValue[6] ^= (ByteUtils.bytes2long(_personalization, 0));
-        newChainValue[7] ^= (ByteUtils.bytes2long(_personalization, 8));
+      if (null != i._personalization) {
+        newChainValue[6] ^= (ByteUtils.bytes2long(i._personalization, 0));
+        newChainValue[7] ^= (ByteUtils.bytes2long(i._personalization, 8));
       }
 
-      _chainValue = newChainValue;
+      i._chainValue = newChainValue;
     }
   }
 
@@ -150,11 +152,12 @@ class Blake2b {
   }
 
   void reset() {
+    _initialized = false;
     _bufferPos = 0;
     _f0 = Int64.fromInts(0, 0);
     _t0 = Int64.fromInts(0, 0);
     _t1 = Int64.fromInts(0, 0);
-    _chainValue = null;
+    //_chainValue = null;
 
     _buffer.fillRange(0, _buffer.length, 0);
 
@@ -162,7 +165,7 @@ class Blake2b {
       _buffer.addAll(_key);
       _bufferPos = Const.blockLengthBytes; // zero padding
     }
-    init();
+    init(this);
   }
 
   void clearKey() {

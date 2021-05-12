@@ -11,8 +11,8 @@
 ///
 import 'dart:typed_data';
 
-import 'package:blake2b/blake2b_hash.dart';
-import 'package:blake2b/utils.dart';
+import '../lib/blake2b_hash.dart';
+import '../lib/utils.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hex/hex.dart';
 
